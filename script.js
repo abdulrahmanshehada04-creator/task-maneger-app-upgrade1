@@ -1,5 +1,6 @@
 // DOM Elements
 const newTaskInput = document.getElementById('newTaskInput');
+const noteInput = document.getElementById('noteInput');
 const dueDateInput = document.getElementById('dueDateInput');
 const addBtn = document.getElementById('addBtn');
 const calendarGrid = document.getElementById('calendarGrid');
@@ -13,24 +14,24 @@ const regErrorDiv = document.getElementById('regError');
 // Current user
 let currentUser = localStorage.getItem('currentUser') || null;
 
-// Load users from localStorage
+// Load users
 function loadUsers() {
   const usersJSON = localStorage.getItem('users');
   return usersJSON ? JSON.parse(usersJSON) : [];
 }
 
-// Save users to localStorage
+// Save users
 function saveUsers(users) {
   localStorage.setItem('users', JSON.stringify(users));
 }
 
-// Load tasks for current user
+// Load tasks
 function loadTasks() {
   const tasksJSON = localStorage.getItem(`tasks_${currentUser}`);
   return tasksJSON ? JSON.parse(tasksJSON) : [];
 }
 
-// Save tasks for current user
+// Save tasks
 function saveTasks(tasks) {
   localStorage.setItem(`tasks_${currentUser}`, JSON.stringify(tasks));
 }
@@ -85,12 +86,10 @@ function renderCalendar() {
 
     cell.textContent = dayNum;
 
-    // Highlight today
     if (day.toDateString() === today.toDateString()) {
       cell.classList.add('today');
     }
 
-    // Get tasks for this date
     const tasks = loadTasks();
     const dayTasks = tasks.filter(t => t.dueDate === dateString);
 
@@ -112,11 +111,62 @@ function renderCalendar() {
   if (weekRow.children.length > 0) {
     calendarGrid.appendChild(weekRow);
   }
+
+  // Add task popups
+  setTimeout(() => {
+    const cells = document.querySelectorAll('.calendar-cell');
+    cells.forEach(cell => {
+      const dateText = cell.textContent;
+      if (!dateText || isNaN(dateText)) return;
+
+      const dayNum = parseInt(dateText);
+      const month = calendarGrid.querySelector('.calendar-row:first-child').children[0].textContent.slice(0, 3);
+      const monthMap = { Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5, Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11 };
+      const monthNum = monthMap[month];
+      const year = new Date().getFullYear();
+      const dateString = `${year}-${(monthNum + 1).toString().padStart(2, '0')}-${dayNum.toString().padStart(2, '0')}`;
+
+      const dayTasks = tasks.filter(t => t.dueDate === dateString);
+
+      if (dayTasks.length > 0) {
+        const popup = document.createElement('div');
+        popup.className = 'task-popup';
+        popup.style.position = 'absolute';
+        popup.style.top = '0';
+        popup.style.left = '0';
+        popup.style.right = '0';
+        popup.style.bottom = '0';
+        popup.style.pointerEvents = 'none';
+        popup.style.overflow = 'hidden';
+
+        dayTasks.forEach(task => {
+          const item = document.createElement('div');
+          item.className = 'task-item';
+          if (task.isCompleted) item.classList.add('completed');
+          if (new Date(task.dueDate) < new Date()) item.classList.add('past');
+
+          item.innerHTML = `
+            <input type="checkbox" class="done-checkbox" ${task.isCompleted ? 'checked' : ''} />
+            <span>${task.title}</span>
+            ${task.note ? `<small>${task.note}</small>` : ''}
+            <button class="edit-btn">✏️</button>
+            <button class="delete-btn">🗑️</button>
+          `;
+
+          item.addEventListener('click', e => e.stopPropagation());
+          popup.appendChild(item);
+        });
+
+        cell.appendChild(popup);
+      }
+    });
+  }, 500);
 }
 
 // Add new task
 addBtn.addEventListener('click', () => {
   const title = newTaskInput.value.trim();
+  const note = noteInput.value.trim();
   const dueDate = dueDateInput.value;
 
   if (!title) {
@@ -132,6 +182,7 @@ addBtn.addEventListener('click', () => {
   const newTask = {
     id: Date.now(),
     title,
+    note,
     dueDate,
     isCompleted: false
   };
@@ -140,9 +191,9 @@ addBtn.addEventListener('click', () => {
   tasks.push(newTask);
   saveTasks(tasks);
   renderCalendar();
-  renderTasks();
 
   newTaskInput.value = '';
+  noteInput.value = '';
   dueDateInput.value = '';
 });
 
@@ -154,7 +205,18 @@ function toggleComplete(id) {
   );
   saveTasks(updatedTasks);
   renderCalendar();
-  renderTasks();
+}
+
+// Edit task
+function editTask(id) {
+  const tasks = loadTasks();
+  const task = tasks.find(t => t.id === id);
+  const newTitle = prompt('Edit task:', task.title);
+  if (newTitle !== null && newTitle.trim() !== '') {
+    task.title = newTitle.trim();
+    saveTasks(tasks);
+    renderCalendar();
+  }
 }
 
 // Delete task
@@ -163,50 +225,6 @@ function deleteTask(id) {
   const filteredTasks = tasks.filter(task => task.id !== id);
   saveTasks(filteredTasks);
   renderCalendar();
-  renderTasks();
-}
-
-// Render tasks list
-function renderTasks() {
-  const tasks = loadTasks();
-  const taskList = document.querySelector('.task-list ul');
-  if (!taskList) return;
-
-  taskList.innerHTML = '';
-
-  if (tasks.length === 0) {
-    taskList.innerHTML = '<li class="empty">No tasks yet.</li>';
-    return;
-  }
-
-  tasks.forEach(task => {
-    const li = document.createElement('li');
-    li.className = `task-item ${task.isCompleted ? 'completed' : ''}`;
-
-    const checkbox = document.createElement('input');
-    checkbox.type = 'checkbox';
-    checkbox.checked = task.isCompleted;
-    checkbox.addEventListener('change', () => toggleComplete(task.id));
-
-    const span = document.createElement('span');
-    span.className = 'task-text';
-    span.textContent = task.title;
-
-    const dueSpan = document.createElement('span');
-    dueSpan.className = 'due-date';
-    dueSpan.textContent = task.dueDate;
-
-    const deleteBtn = document.createElement('button');
-    deleteBtn.textContent = 'Delete';
-    deleteBtn.addEventListener('click', () => deleteTask(task.id));
-
-    li.appendChild(checkbox);
-    li.appendChild(span);
-    li.appendChild(dueSpan);
-    li.appendChild(deleteBtn);
-
-    taskList.appendChild(li);
-  });
 }
 
 // Dark mode toggle
@@ -276,7 +294,6 @@ window.addEventListener('load', () => {
     window.location.href = 'login.html';
   } else {
     renderCalendar();
-    renderTasks();
   }
 
   if (document.body.classList.contains('dark-mode')) {

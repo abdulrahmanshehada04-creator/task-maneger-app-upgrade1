@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Task Manager App</title>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body class="app-body">
+  <header class="app-header">
+    <h1>📅 Task Manager App</h1>
+    <div class="controls">
+      <button id="darkModeToggle">🌙 Dark Mode</button>
+      <button id="logoutBtn">🚪 Logout</button>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="add-task">
+      <input type="text" id="newTaskInput" placeholder="Enter task..." />
+      <input type="date" id="dueDateInput" />
+      <button id="addBtn">➕ Add Task</button>
+    </section>
+
+    <section class="calendar-section">
+      <h2>🗓️ Calendar View</h2>
+      <div id="calendarGrid"></div>
+    </section>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>

@@ -1,8 +1,39 @@
-<!-- Task Panel (hidden by default) -->
-<div id="taskPanel" class="task-panel hidden">
-  <div class="task-panel-header">
-    <h2 id="taskPanelDate">Tasks for </h2>
-    <button id="closePanelBtn">❌</button>
-  </div>
-  <div id="taskList"></div>
-</div>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>📅✨ Task Manager Pro</title>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body class="app-body">
+  <header class="app-header">
+    <div class="logo">✨ Task Manager Pro</div>
+    <div class="controls">
+      <button id="darkModeToggle">🌙 Dark Mode</button>
+      <button id="logoutBtn">🚪 Logout</button>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="add-task">
+      <input type="text" id="newTaskInput" placeholder="Enter a new task..." />
+      <textarea id="noteInput" placeholder="Add a note (optional)"></textarea>
+      <input type="date" id="dueDateInput" min="" />
+      <button id="addBtn">➕ Add Task</button>
+    </section>
+
+    <section class="calendar-section">
+      <h2>🗓️ Calendar View</h2>
+      <div id="calendarGrid"></div>
+    </section>
+
+    <section class="tasks-list">
+      <h3 id="selectedDateLabel">Tasks for Selected Date</h3>
+      <ul id="tasksList"></ul>
+    </section>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>

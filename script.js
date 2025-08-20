@@ -4,6 +4,8 @@ const noteInput = document.getElementById('noteInput');
 const dueDateInput = document.getElementById('dueDateInput');
 const addBtn = document.getElementById('addBtn');
 const calendarGrid = document.getElementById('calendarGrid');
+const tasksList = document.getElementById('tasksList');
+const selectedDateLabel = document.getElementById('selectedDateLabel');
 const darkModeToggle = document.getElementById('darkModeToggle');
 const logoutBtn = document.getElementById('logoutBtn');
 const loginForm = document.getElementById('loginForm');
@@ -99,6 +101,12 @@ function renderCalendar() {
       cell.appendChild(dot);
     }
 
+    // Add click event to show tasks below
+    cell.addEventListener('click', () => {
+      selectedDateLabel.textContent = `Tasks for ${formatDate(dateString)}`;
+      renderTasksForDate(dateString);
+    });
+
     weekRow.appendChild(cell);
 
     if ((index + 1) % 7 === 0) {
@@ -111,56 +119,130 @@ function renderCalendar() {
   if (weekRow.children.length > 0) {
     calendarGrid.appendChild(weekRow);
   }
+}
 
-  // Add task popups
-  setTimeout(() => {
-    const cells = document.querySelectorAll('.calendar-cell');
-    cells.forEach(cell => {
-      const dateText = cell.textContent;
-      if (!dateText || isNaN(dateText)) return;
+// Format date (e.g., "Aug 15, 2025")
+function formatDate(dateStr) {
+  const [year, month, day] = dateStr.split('-');
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const monthName = months[parseInt(month) - 1];
+  return `${monthName} ${day}, ${year}`;
+}
 
-      const dayNum = parseInt(dateText);
-      const month = calendarGrid.querySelector('.calendar-row:first-child').children[0].textContent.slice(0, 3);
-      const monthMap = { Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5, Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11 };
-      const monthNum = monthMap[month];
-      const year = new Date().getFullYear();
-      const dateString = `${year}-${(monthNum + 1).toString().padStart(2, '0')}-${dayNum.toString().padStart(2, '0')}`;
+// Render tasks for selected date
+function renderTasksForDate(dateString) {
+  const tasks = loadTasks();
+  const filteredTasks = tasks.filter(t => t.dueDate === dateString);
 
-      const dayTasks = tasks.filter(t => t.dueDate === dateString);
+  tasksList.innerHTML = '';
 
-      if (dayTasks.length > 0) {
-        const popup = document.createElement('div');
-        popup.className = 'task-popup';
-        popup.style.position = 'absolute';
-        popup.style.top = '0';
-        popup.style.left = '0';
-        popup.style.right = '0';
-        popup.style.bottom = '0';
-        popup.style.pointerEvents = 'none';
-        popup.style.overflow = 'hidden';
+  if (filteredTasks.length === 0) {
+    const empty = document.createElement('li');
+    empty.className = 'empty-message';
+    empty.textContent = 'No tasks for this date.';
+    tasksList.appendChild(empty);
+    return;
+  }
 
-        dayTasks.forEach(task => {
-          const item = document.createElement('div');
-          item.className = 'task-item';
-          if (task.isCompleted) item.classList.add('completed');
-          if (new Date(task.dueDate) < new Date()) item.classList.add('past');
+  filteredTasks.forEach(task => {
+    const li = document.createElement('li');
+    li.className = `task-item ${task.isCompleted ? 'completed' : ''} ${new Date(task.dueDate) < new Date() ? 'past' : ''}`;
 
-          item.innerHTML = `
-            <input type="checkbox" class="done-checkbox" ${task.isCompleted ? 'checked' : ''} />
-            <span>${task.title}</span>
-            ${task.note ? `<small>${task.note}</small>` : ''}
-            <button class="edit-btn">✏️</button>
-            <button class="delete-btn">🗑️</button>
-          `;
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.checked = task.isCompleted;
+    checkbox.classList.add('done-checkbox');
+    checkbox.addEventListener('change', () => toggleComplete(task.id));
 
-          item.addEventListener('click', e => e.stopPropagation());
-          popup.appendChild(item);
-        });
+    const titleSpan = document.createElement('span');
+    titleSpan.className = 'task-text';
+    titleSpan.textContent = task.title;
 
-        cell.appendChild(popup);
-      }
-    });
-  }, 500);
+    const noteSpan = document.createElement('span');
+    noteSpan.className = 'note';
+    noteSpan.textContent = task.note ? `Note: ${task.note}` : '';
+
+    const actionsDiv = document.createElement('div');
+    actionsDiv.className = 'actions';
+
+    const editBtn = document.createElement('button');
+    editBtn.className = 'edit-btn';
+    editBtn.textContent = '✏️';
+    editBtn.addEventListener('click', () => editTask(task.id));
+
+    const deleteBtn = document.createElement('button');
+    deleteBtn.className = 'delete-btn';
+    deleteBtn.textContent = '🗑️';
+    deleteBtn.addEventListener('click', () => deleteTask(task.id));
+
+    actionsDiv.appendChild(editBtn);
+    actionsDiv.appendChild(deleteBtn);
+
+    li.appendChild(checkbox);
+    li.appendChild(titleSpan);
+    li.appendChild(noteSpan);
+    li.appendChild(actionsDiv);
+
+    tasksList.appendChild(li);
+  });
+}
+
+// Toggle completion
+function toggleComplete(id) {
+  const tasks = loadTasks();
+  const updatedTasks = tasks.map(task =>
+    task.id === id ? { ...task, isCompleted: !task.isCompleted } : task
+  );
+  saveTasks(updatedTasks);
+  renderCalendar(); // Re-render calendar to update status colors
+  const selectedDate = tasksList.querySelector('.task-item')?.parentElement?.parentElement?.parentElement?.querySelector('#selectedDateLabel')?.textContent;
+  if (selectedDate) {
+    const dateStr = selectedDate.replace('Tasks for ', '');
+    const match = dateStr.match(/(\w+) (\d+), (\d+)/);
+    if (match) {
+      const monthMap = { Jan: 1, Feb: 2, Mar: 3, Apr: 4, May: 5, Jun: 6, Jul: 7, Aug: 8, Sep: 9, Oct: 10, Nov: 11, Dec: 12 };
+      const month = monthMap[match[1]];
+      const day = match[2];
+      const year = match[3];
+      const dateString = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+      renderTasksForDate(dateString);
+    }
+  }
+}
+
+// Edit task
+function editTask(id) {
+  const tasks = loadTasks();
+  const task = tasks.find(t => t.id === id);
+  const newTitle = prompt('Edit task:', task.title);
+  if (newTitle !== null && newTitle.trim() !== '') {
+    task.title = newTitle.trim();
+    saveTasks(tasks);
+    renderCalendar();
+    renderTasksForDate(task.dueDate);
+  }
+}
+
+// Delete task
+function deleteTask(id) {
+  const tasks = loadTasks();
+  const filteredTasks = tasks.filter(task => task.id !== id);
+  saveTasks(filteredTasks);
+  renderCalendar();
+  const selectedDate = tasksList.querySelector('.task-item')?.parentElement?.parentElement?.parentElement?.querySelector('#selectedDateLabel')?.textContent;
+  if (selectedDate) {
+    const dateStr = selectedDate.replace('Tasks for ', '');
+    const match = dateStr.match(/(\w+) (\d+), (\d+)/);
+    if (match) {
+      const monthMap = { Jan: 1, Feb: 2, Mar: 3, Apr: 4, May: 5, Jun: 6, Jul: 7, Aug: 8, Sep: 9, Oct: 10, Nov: 11, Dec: 12 };
+      const month = monthMap[match[1]];
+      const day = match[2];
+      const year = match[3];
+      const dateString = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+      renderTasksForDate(dateString);
+    }
+  }
 }
 
 // Add new task
@@ -196,36 +278,6 @@ addBtn.addEventListener('click', () => {
   noteInput.value = '';
   dueDateInput.value = '';
 });
-
-// Toggle completion
-function toggleComplete(id) {
-  const tasks = loadTasks();
-  const updatedTasks = tasks.map(task =>
-    task.id === id ? { ...task, isCompleted: !task.isCompleted } : task
-  );
-  saveTasks(updatedTasks);
-  renderCalendar();
-}
-
-// Edit task
-function editTask(id) {
-  const tasks = loadTasks();
-  const task = tasks.find(t => t.id === id);
-  const newTitle = prompt('Edit task:', task.title);
-  if (newTitle !== null && newTitle.trim() !== '') {
-    task.title = newTitle.trim();
-    saveTasks(tasks);
-    renderCalendar();
-  }
-}
-
-// Delete task
-function deleteTask(id) {
-  const tasks = loadTasks();
-  const filteredTasks = tasks.filter(task => task.id !== id);
-  saveTasks(filteredTasks);
-  renderCalendar();
-}
 
 // Dark mode toggle
 darkModeToggle.addEventListener('click', () => {

@@ -16,6 +16,10 @@ const regErrorDiv = document.getElementById('regError');
 // Current user
 let currentUser = localStorage.getItem('currentUser') || null;
 
+// Set today as min date
+const today = new Date().toISOString().split('T')[0];
+dueDateInput.min = today;
+
 // Load users
 function loadUsers() {
   const usersJSON = localStorage.getItem('users');
@@ -101,7 +105,7 @@ function renderCalendar() {
       cell.appendChild(dot);
     }
 
-    // Add click event to show tasks below
+    // Click event to show tasks
     cell.addEventListener('click', () => {
       selectedDateLabel.textContent = `Tasks for ${formatDate(dateString)}`;
       renderTasksForDate(dateString);
